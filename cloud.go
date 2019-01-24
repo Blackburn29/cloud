@@ -50,6 +50,32 @@ func Dial(host, username, password string) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) FilterFiles(path string, rules model.FilterRules) (*model.MultiStatusResponse, error) {
+	properties := model.CreateFilterFiles(rules)
+
+	destUrl, err := url.Parse(fmt.Sprintf("files/%s/%s", c.Username, path))
+	if err != nil {
+		return nil, err
+	}
+
+	headers := []Header{}
+
+	body, _ := xml.Marshal(properties)
+	dir := model.MultiStatusResponse{}
+
+	resp, _, err := c.sendRequest("REPORT", c.Url.ResolveReference(destUrl).String(), body, &dir, headers)
+
+	if resp != nil && resp.StatusCode == 404 {
+		return nil, fmt.Errorf("file not found")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &dir, nil
+}
+
 func (c *Client) ListDirectory(path string, depth int) (*model.MultiStatusResponse, error) {
 	properties := model.CreateProperties()
 

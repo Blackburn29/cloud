@@ -147,3 +147,48 @@ func (t *testSuite) TestListDirectory() {
 
 	t.True(found, fmt.Sprint("Could not find test.txt in directory"))
 }
+
+func (t *testSuite) TestFilterFiles() {
+	client.Mkdir("Test")
+	src, err := ioutil.ReadFile(filepath.Join(testDir, "test.txt"))
+	err = client.Upload(src, "Test/test.txt")
+	t.Nil(err)
+
+	tag := &model.Tag{
+		Name: 			"Test123",
+		CanAssign:		true,
+		UserVisible:    true,
+		UserAssignable: true,
+	}
+
+	_, err = client.AddTag("Test/test.txt", tag)
+
+	t.Nil(err)
+
+	systemTag, err := client.FindSystemTag("Test123")
+	t.Nil(err)
+
+	resp, err := client.FilterFiles("Test/", model.FilterRules{SystemTag: systemTag.Properties[0].Id})
+
+	t.Not(t.Nil(resp), "Response was null")
+	t.Nil(err)
+
+	if resp == nil {
+		return
+	}
+
+	t.True(len(resp.Responses) > 0)
+	t.True(len(resp.Responses[0].Properties) > 0)
+
+	found := false
+
+	for _, response := range resp.Responses {
+		path := strings.Split(response.Href, "/")
+		if path[len(path) - 1] == "test.txt" {
+			found = true
+			break
+		}
+	}
+
+	t.True(found, fmt.Sprint("Could not find test.txt in directory"))
+}
