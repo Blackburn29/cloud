@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // A client represents a client connection to a {own|next}cloud
@@ -137,7 +138,6 @@ func (c *Client) Upload(src []byte, dest string) error {
 
 // Download downloads a file from the specified path.
 func (c *Client) Download(path string) ([]byte, error) {
-
 	pathUrl, err := url.Parse(fmt.Sprintf("files/%s/%s", c.Username, path))
 	if err != nil {
 		return nil, err
@@ -322,17 +322,19 @@ func (c *Client) sendRequest(request string, path string, body []byte, returnVal
 			}
 		}
 
-		errorXml := Error{}
-		err = xml.Unmarshal(content, &errorXml)
-		if err != nil {
-			if err == io.EOF {
-				return resp, content, nil
-			}
+		if strings.HasPrefix(resp.Header.Get("content-type"), "application/xml") {
+			errorXml := Error{}
+			err = xml.Unmarshal(content, &errorXml)
+			if err != nil {
+				if err == io.EOF {
+					return resp, content, nil
+				}
 
-			return resp, content, fmt.Errorf("error during XML Unmarshal for response %s. the error was %s", content, err)
-		}
-		if errorXml.Exception != "" {
-			return resp, content, fmt.Errorf("exception: %s, message: %s", errorXml.Exception, errorXml.Message)
+				return resp, content, fmt.Errorf("error during XML Unmarshal for response %s. the error was %s", content, err)
+			}
+			if errorXml.Exception != "" {
+				return resp, content, fmt.Errorf("exception: %s, message: %s", errorXml.Exception, errorXml.Message)
+			}
 		}
 	}
 
